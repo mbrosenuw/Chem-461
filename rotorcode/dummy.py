@@ -2,9 +2,9 @@ import numpy as np
 import os
 import csv
 import matplotlib.pyplot as plt
-import asymrotor
+import symrotor
 
-filename = 'Rosen_Au24.csv'
+filename = 'Data Set 1_SPR2020.csv'
 spec2 = np.array([])
 freq2 = np.array([])
 if os.path.exists(filename):
@@ -24,7 +24,7 @@ hcl = [l]*3
 hcl = [u]*3
 lims =[-250,250]
 shift  = 5667.7
-freq, spec = asymrotor.spectra(hcl, hcl, [1,1,1],15,300,'hcl', lims, 0.5, False)
+freq, spec = symrotor.spectra(hcl, hcl, [1,1,1],20,300,'hcl', lims, 0.5, False)
 spec = spec/np.max(spec)
 np.save('spec.npy', spec)
 np.save('freq.npy', freq)

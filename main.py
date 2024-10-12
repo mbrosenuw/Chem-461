@@ -196,34 +196,66 @@ def label(p, r):
     err = np.sqrt(np.diag(cov))
     return out, poly, err
 
+def r4(arr):
+    def round_single_value(val):
+        if val == 0:
+            return 0
+        else:
+            return np.round(val, decimals=3 - int(np.floor(np.log10(np.abs(val)))))
+
+    vectorized_round = np.vectorize(round_single_value)
+    return vectorized_round(arr)
+def getfconsts(poly, errs, name):
+    consts = np.zeros(3)
+    consts[0] = -poly[0]
+    consts[1] = 0.5 * (poly[1] - 2*poly[0])
+    consts[2] = poly[2]
+    fiterr = errs
+    fiterr[1] = np.sqrt((0.5*errs[1])**2 + errs[2]**2)
+    consts = r4(consts)
+    fiterr = r4(fiterr)
+    print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2], ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2], '\\\\')
+    return consts[2], fiterr[2]
+
+def getoconsts(poly, errs, name, nuf, nuferr):
+    consts = np.zeros(3)
+    consts[0] = -0.5 * poly[0]
+    consts[1] = 0.25 * (2*poly[1] - 3*poly[0])
+    consts[2] = poly[2]
+    fiterr = errs
+    fiterr[0] = 0.5*fiterr[0]
+    fiterr[1] = np.sqrt((0.5*errs[1])**2 + (0.75*errs[2])**2)
+    consts = r4(consts)
+    fiterr = r4(fiterr)
+    nuu = consts[2]
+    nuuerr = fiterr[2]
+    nu0 = 3*nuf - nuu
+    X = (nuu - 2*nuf)/(2*nuu - 6*nuf)
+    Xerr = np.sqrt(((nuf*nuuerr)/(2 * (nuu-3*nuf)**2))**2 + ((nuu*nuferr)/(2 * (-nuu+3*nuf)**2))**2)
+    nu0err = np.sqrt((3*nuferr)**2 + nuuerr**2)
+    print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2],  ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2],  '\\\\')
 
 h35fl, h35fpoly, h35ferrs = label(h35fp, h35fr)
-print(h35fpoly)
-print(h35ferrs)
+h35fn, h35fnerr = getfconsts(h35fpoly, h35ferrs, 'H$^{35}$Cl')
 h37fl, h37fpoly, h37ferrs = label(h37fp, h37fr)
-print(h37fpoly)
-print(h37ferrs)
+h37fn, h37fnerr = getfconsts(h37fpoly, h37ferrs, 'H$^{37}$Cl')
 d35fl, d35fpoly, d35ferrs = label(d35fp, d35fr)
-print(d35fpoly)
-print(d35ferrs)
+d35fn, d35fnerr = getfconsts(d35fpoly, d35ferrs, 'D$^{35}$Cl')
 d37fl, d37fpoly, d37ferrs = label(d37fp, d37fr)
-print(d37fpoly)
-print(d37ferrs)
+d37fn, d37fnerr = getfconsts(d37fpoly, d37ferrs, 'D$^{37}$Cl')
 h35ol, h35opoly, h35oerrs = label(h35op, h35or)
-print(h35opoly)
-print(h35oerrs)
+getoconsts(h35opoly, h35oerrs, 'H$^{35}$Cl', h35fn, h35fnerr)
 h37ol, h37opoly, h37oerrs = label(h37op, h37or)
-print(h37opoly)
-print(h37oerrs)
+getoconsts(h37opoly, h37oerrs, 'H$^{37}$Cl', h37fn, h37fnerr)
 d35ol, d35opoly, d35oerrs = label(d35op, d35or)
-print(d35opoly)
-print(d35oerrs)
+getoconsts(d35opoly, d35oerrs, 'D$^{35}$Cl', d35fn, d35fnerr)
 d37ol, d37opoly, d37oerrs = label(d37op, d37or)
-print(d37opoly)
-print(d37oerrs)
+getoconsts(d37opoly, d37oerrs, 'D$^{37}$Cl', d37fn, d37fnerr)
 
 def geterr(errs, m):
     return np.sqrt(errs[0]**2 + m**2*errs[1]**2 + (m**4)*errs[2]**2)
+
+
 
 # mval = np.linspace(-10,10,21)
 # fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12, 9))

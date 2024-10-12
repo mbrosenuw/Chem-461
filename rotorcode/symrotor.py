@@ -71,13 +71,14 @@ def spectra(coeffs, ucoeffs, mu, jmax, T,name, lims, width,showE):
             spectra[i][:]= trans(track)
             pbar.update(1)
     spectra = np.sum(spectra, axis = 0)
-    plt.figure()
-    plt.plot(freq, spectra, color='red', linewidth=0.5)
-    plt.xlim(lims)
-    plt.title('Rotational spectrum of ' + name)
-    plt.xlabel('Energy (cm-1)')
-    plt.ylabel('Intensity')
-    plt.show()
+    # plt.figure()
+    # plt.plot(freq, spectra, color='red', linewidth=0.5)
+    # plt.xlim(lims)
+    # plt.title('Rotational spectrum of ' + name)
+    # plt.xlabel('Energy (cm-1)')
+    # plt.ylabel('Intensity')
+    # plt.show()
+    return freq, spectra
 
 def kspectra(coeffs, ucoeffs, mu, jmax, T,name, lims, width,showE):
     freq = np.arange(lims[0], lims[1], width/5)
