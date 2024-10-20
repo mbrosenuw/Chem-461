@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import os
 import csv
-import scipy.signal as sc
+import scipy as sc
 
 
 filename = 'Data Set 1_SPR2020.csv'
@@ -108,10 +108,10 @@ DClot = DClover[((DClover[:,0] > 3989) & (DClover[:,0] < 4115)) | ((DClover[:,0]
 HClft = HClfund[(HClfund[:,0] > 2626.7) & (HClfund[:,0] <3085),:]
 HClot = HClover[(HClover[:,0] > 5484) & (HClover[:,0] < 5796),:]
 
-DClfpeaks, _ = sc.find_peaks(DClft[:,1], height=0.05)
-DClopeaks, _ = sc.find_peaks(DClot[:,1], height=0.05)
-HClfpeaks, _ = sc.find_peaks(HClft[:,1], height=0.05)
-HClopeaks, _ = sc.find_peaks(HClot[:,1], height=0.05)
+DClfpeaks, _ = sc.signal.find_peaks(DClft[:,1], height=0.05)
+DClopeaks, _ = sc.signal.find_peaks(DClot[:,1], height=0.05)
+HClfpeaks, _ = sc.signal.find_peaks(HClft[:,1], height=0.05)
+HClopeaks, _ = sc.signal.find_peaks(HClot[:,1], height=0.05)
 DClfpf = DClft[DClfpeaks,:]
 DClopf = DClot[DClopeaks,:]
 HClfpf = HClft[HClfpeaks,:]
@@ -214,8 +214,8 @@ def getfconsts(poly, errs, name):
     fiterr[1] = np.sqrt((0.5*errs[1])**2 + errs[2]**2)
     consts = r4(consts)
     fiterr = r4(fiterr)
-    print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2], ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2], '\\\\')
-    return consts[2], fiterr[2]
+    # print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2], ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2], '\\\\')
+    return consts, fiterr
 
 def getoconsts(poly, errs, name, nuf, nuferr):
     consts = np.zeros(3)
@@ -233,24 +233,111 @@ def getoconsts(poly, errs, name, nuf, nuferr):
     X = (nuu - 2*nuf)/(2*nuu - 6*nuf)
     Xerr = np.sqrt(((nuf*nuuerr)/(2 * (nuu-3*nuf)**2))**2 + ((nuu*nuferr)/(2 * (-nuu+3*nuf)**2))**2)
     nu0err = np.sqrt((3*nuferr)**2 + nuuerr**2)
-    print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2],  ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2],  '\\\\')
+    # print(name, ' & ', consts[0], ' & ', consts[1], ' & ', consts[2],  ' & ', fiterr[0], ' & ', fiterr[1], ' & ', fiterr[2],  '\\\\')
+    return consts, fiterr
+
+def getHparams(consts, errs, mu, name):
+    hbar = sc.constants.hbar
+    amkg = sc.constants.atomic_mass
+    mu = amkg*mu
+    c = sc.constants.c * 100 #in cm/s
+    re = np.sqrt(hbar/ (4 * np.pi*mu * c * consts[1]))*10**10
+    reerr = np.sqrt(hbar/ (4 * np.pi*mu * c * consts[1]**2))*10**10
+    I = hbar / (4*np.pi*c * consts[1]) * errs[1] / amkg * 10**20
+    Ierr = hbar / (4*np.pi*c * consts[1]**2) * errs[1] / amkg * 10**20
+    k = (2 * np.pi * c * consts[2])**2 * mu
+    kerr = 2 * (2*np.pi * c)**2 * consts[2] * errs[2] * mu
+    print(name, ' & ', r4(k), ' & ', r4(I), ' & ', r4(re),  ' & ', r4(kerr), ' & ', r4(Ierr), ' & ', r4(reerr),  '\\\\')
+    return np.array([k, I, re]), np.array([kerr,Ierr,reerr])
+
+def getratios(consts1, consts2, err1, err2, mu1, mu2, name1, name2):
+    vibratio = np.sqrt(mu1/mu2)
+    expvibratio = consts2[2]/consts1[2]
+    expvrerr = np.sqrt((err2[2]/consts1[2])**2 + (consts2[2]/consts1[2]**2 * err1[2])**2)
+    rotratio = mu1/mu2
+    exprotratio = consts2[1]/consts1[1]
+    exprrerr = np.sqrt((err2[1] / consts1[1]) ** 2 + (consts2[1] / consts1[1] ** 2 * err1[1]) ** 2)
+    print('calc: & ' + name1 + ':' + name2, ' & ', r4(vibratio), ' & ', r4(rotratio), '\\\\')
+    print('exp : & ' + name1 + ':' + name2, ' & ', r4(expvibratio), ' & ', r4(exprotratio), ' & ', r4(expvrerr), ' & ', r4(exprrerr),'\\\\')
+
+
+
+def getthermo(consts, errs, mass, name):
+    from scipy.constants import physical_constants as pc
+    kb = pc['Boltzmann constant in inverse meter per kelvin'][0] / 100
+    N = pc['N_A']
+    h = sc.constants.h
+    c = sc.constants.c
+    T = 300 #kelvin
+    P =  101325 #Pa
+    l = h / np.sqrt(2 * np.pi *kb *T)
+    errl = 0
+    Trot = h * c * consts[1]/ kb
+    Troterr = h * c * errs[1]/ kb
+    Tvib = h * c * consts[2]/ kb
+    Tviberr= h * c * errs[2]/ kb
+    Ztr = N * kb * T / (P * l**3)
+    Ztrerr= 0
+    Zrot = T/Trot
+    Zroterr = T/Trot**2 * Troterr
+    Zvib = 1/(1-np.exp(-Tvib/T))
+    Zviberr = np.exp(Tvib/T)/ (T* (np.exp(Tvib/T) - 1)**2) * Tviberr
+    U = 5/2 * N*kb*T + N*kb*Tvib/(np.exp(Tvib/T) - 1)
+    F = -N*kb*T(np.log(np.exp(1)*Ztr/N) + np.log(Zrot*Zvib))
+    H = 7/2 * N*kb*T + N*kb*Tvib/(np.exp(Tvib/T) - 1)
+    C = (N * kb * Tvib**2 * np.exp(Tvib/T))/ (T**2 * (np.exp(Tvib/T) - 1)**2) + 5*N*kb/2
+    S = (U - F)/T
+    Uerr = ((N*kb * ((Tvib - T)*np.exp(Tvib/T) + T)/ ()))
 
 h35fl, h35fpoly, h35ferrs = label(h35fp, h35fr)
-h35fn, h35fnerr = getfconsts(h35fpoly, h35ferrs, 'H$^{35}$Cl')
+h35fc, h35ferr = getfconsts(h35fpoly, h35ferrs, 'H$^{35}$Cl')
+# getHparams(h35fc, h35ferr, 0.9797012, 'H$^{35}$Cl Fundamental')
+
 h37fl, h37fpoly, h37ferrs = label(h37fp, h37fr)
-h37fn, h37fnerr = getfconsts(h37fpoly, h37ferrs, 'H$^{37}$Cl')
+h37fc, h37ferr = getfconsts(h37fpoly, h37ferrs, 'H$^{37}$Cl')
+# getHparams(h37fc, h37ferr, 0.98118624, 'H$^{37}$Cl Fundamental')
+
 d35fl, d35fpoly, d35ferrs = label(d35fp, d35fr)
-d35fn, d35fnerr = getfconsts(d35fpoly, d35ferrs, 'D$^{35}$Cl')
+d35fc, d35ferr = getfconsts(d35fpoly, d35ferrs, 'D$^{35}$Cl')
+# getHparams(d35fc, d35ferr, 1.9044132, 'D$^{35}$Cl Fundamental')
+
 d37fl, d37fpoly, d37ferrs = label(d37fp, d37fr)
-d37fn, d37fnerr = getfconsts(d37fpoly, d37ferrs, 'D$^{37}$Cl')
+d37fc, d37ferr = getfconsts(d37fpoly, d37ferrs, 'D$^{37}$Cl')
+# getHparams(d37fc, d37ferr, 1.91003288, 'D$^{37}$Cl Fundamental')
+
 h35ol, h35opoly, h35oerrs = label(h35op, h35or)
-getoconsts(h35opoly, h35oerrs, 'H$^{35}$Cl', h35fn, h35fnerr)
+h35oc, h35oerr = getoconsts(h35opoly, h35oerrs, 'H$^{35}$Cl', h35fc[2], h35ferr[2])
+# getHparams(h35oc, h35oerr, 0.9797012, 'H$^{35}$Cl Overtone')
+
 h37ol, h37opoly, h37oerrs = label(h37op, h37or)
-getoconsts(h37opoly, h37oerrs, 'H$^{37}$Cl', h37fn, h37fnerr)
+h37oc, h37oerr = getoconsts(h37opoly, h37oerrs, 'H$^{37}$Cl', h37fc[2], h37ferr[2])
+# getHparams(h37oc, h37oerr, 0.98118624, 'H$^{37}$Cl Overtone')
+
 d35ol, d35opoly, d35oerrs = label(d35op, d35or)
-getoconsts(d35opoly, d35oerrs, 'D$^{35}$Cl', d35fn, d35fnerr)
+d35oc, d35oerr = getoconsts(d35opoly, d35oerrs, 'D$^{35}$Cl', d35fc[2], d35ferr[2])
+# getHparams(d35oc, d35oerr, 1.9044132, 'D$^{35}$Cl Overtone')
+
 d37ol, d37opoly, d37oerrs = label(d37op, d37or)
-getoconsts(d37opoly, d37oerrs, 'D$^{37}$Cl', d37fn, d37fnerr)
+d37oc, d37oerr = getoconsts(d37opoly, d37oerrs, 'D$^{37}$Cl', d37fc, d37ferr)
+# getHparams(d37oc, d37oerr, 1.91003288, 'D$^{37}$Cl Overtone')
+
+
+# getratios( h37fc, h35fc, h37ferr, h35ferr, 0.98118624,0.9797012,'F: H$^{37}$Cl', 'H$^{35}$Cl')
+# getratios( d35fc, h35fc, d35ferr, h35ferr, 1.9044132,0.9797012,'F: D$^{35}$Cl', 'H$^{35}$Cl')
+# getratios( d37fc, h35fc, d37ferr, h35ferr, 1.91003288,0.9797012,'F: D$^{37}$Cl', 'H$^{35}$Cl')
+# getratios( d35fc, h37fc, d35ferr, h37ferr, 1.9044132,0.98118624,'F: D$^{35}$Cl', 'H$^{37}$Cl')
+# getratios( d37fc, h37fc, d37ferr, h37ferr, 1.91003288,0.98118624,'F: D$^{37}$Cl', 'H$^{37}$Cl')
+# getratios( d37fc, h37fc, d37ferr, h37ferr, 1.91003288,0.98118624,'F: D$^{37}$Cl', 'H$^{37}$Cl')
+#
+#
+# getratios( h37oc, h35oc, h37oerr, h35oerr, 0.98118624,0.9797012,'O: H$^{37}$Cl', 'H$^{35}$Cl')
+# getratios( d35oc, h35oc, d35oerr, h35oerr, 1.9044132,0.9797012,'O: D$^{35}$Cl', 'H$^{35}$Cl')
+# getratios( d37oc, h35oc, d37oerr, h35oerr, 1.91003288,0.9797012,'O: D$^{37}$Cl', 'H$^{35}$Cl')
+# getratios( d35oc, h37oc, d35oerr, h37oerr, 1.9044132,0.98118624,'O: D$^{35}$Cl', 'H$^{37}$Cl')
+# getratios( d37oc, h37oc, d37oerr, h37oerr, 1.91003288,0.98118624,'O: D$^{37}$Cl', 'H$^{37}$Cl')
+# getratios( d37oc, h37oc, d37oerr, h37oerr, 1.91003288,0.98118624,'O: D$^{37}$Cl', 'H$^{37}$Cl')
+
+
 
 def geterr(errs, m):
     return np.sqrt(errs[0]**2 + m**2*errs[1]**2 + (m**4)*errs[2]**2)
