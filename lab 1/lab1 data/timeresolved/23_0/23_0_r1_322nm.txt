@@ -2,6 +2,7 @@ Data from roomtemp_23.0_mrosen_r2_322 nm__0__15-13-26-637.txt Node
 
 Standard Time	Epoch Time		Value
 HH:MM:SS:000	(msec 1970)
+>>>>>Begin Spectral Data<<<<<
 15:13:26.628	1729894406628	0.04128
 15:13:26.673	1729894406673	0.04137
 15:13:26.692	1729894406692	0.04307

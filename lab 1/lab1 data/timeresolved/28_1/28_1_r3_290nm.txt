@@ -2,6 +2,7 @@ Data from elevtemp28_1_mrosen_r3_290 nm__0__16-01-22-560.txt Node
 
 Standard Time	Epoch Time		Value
 HH:MM:SS:000	(msec 1970)
+>>>>>Begin Spectral Data<<<<<
 16:01:22.548	1729724482548	-0.03647
 16:01:22.570	1729724482570	-0.02701
 16:01:22.589	1729724482589	-0.03244
