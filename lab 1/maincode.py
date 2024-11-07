@@ -45,13 +45,13 @@ class Run():
         fig, axs = plt.subplots(figsize=(12, 4), ncols=3, nrows=1)
         fig.subplots_adjust(wspace=0.3)
         c = (self.d240[:, 0] > self.start) & (self.d240[:, 0] < self.stop)
-        fitabs(self.d240[c, :], axs[0], name=self.n240, runname = self.temp + '_240')
+        self.Ai240, self.kTot240, self.sAi240, self.skTot240 = fitabs(self.d240[c, :], axs[0], name=self.n240, runname = self.temp + '_240')
         axs[0].set_title(self.n240)
         axs[0].set_title('240 nm Abs vs time ')
         axs[0].set_xlabel('Time')
         axs[0].set_ylabel('Abs')
         c = (self.d290[:, 0] > self.start) & (self.d290[:, 0] < self.stop)
-        fitabs(self.d290[c, :], axs[1], name=self.n290, runname = self.temp+ '_290')
+        self.Ai290, self.kTot290, self.sAi290, self.skTot290 = fitabs(self.d290[c, :], axs[1], name=self.n290, runname = self.temp+ '_290')
         axs[1].set_title(self.n290)
         axs[1].set_title('290 nm Abs vs time ')
         axs[1].set_xlabel('Time')
@@ -60,7 +60,7 @@ class Run():
             c = (self.d322[:,0] > self.c322)
             self.d322[c,1]= 0
         c = (self.d322[:, 0] > self.start) & (self.d322[:, 0] < self.stop)
-        fit322(self.d322[c, :], axs[2], name=self.n322, runname = self.temp + '_322')
+        self.k3, self.sk3 = fit322(self.d322[c, :], axs[2], name=self.n322, runname = self.temp + '_322')
         axs[2].set_title(self.n322)
         axs[2].set_title('322 nm Abs vs time ')
         axs[2].set_xlabel('Time')
@@ -69,6 +69,20 @@ class Run():
         fig.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
 
+    def getrates(self):
+        bp0 = 8 * 10**(-4) * 28/35
+        l = 1
+        params = np.array([[self.Ai240],[self.Ai290],[self.kTot240]])
+        mat = np.array([[l* bp0/self.kTot240 * 5400 , l* bp0/self.kTot240 * 6500, l* bp0/self.kTot240 * 800],
+                        [l* bp0/self.kTot290 * 15800,0,0],[1,1,1]])
+        k1,k2,k4 = np.linalg.solve(mat,params).flatten()
+        # print(self.temp, ' & ', r4(k1), ' & ', r4(k2), ' & ', r4(self.k3), ' & ', r4(k4), ' & ', r4(self.kTot240), '\\\\')
+
+        Sy = np.array([[self.sAi240**2, 0,0],[0, self.sAi290**2, 0],[0,0, self.skTot240]])
+        Sk = np.linalg.inv(mat) @ Sy @ np.linalg.inv(mat).T
+        sk1, sk2, sk4 = np.sqrt(np.diag(Sk))
+        print(self.temp, ' & ', r4(sk1), ' & ', r4(sk2), ' & ', r4(self.sk3), ' & ', r4(sk4), ' & ', r4(self.skTot240),
+              '\\\\')
 def openspec(filename, ravg=False, w = 5):
     #open a file and return the contents of x-y data, with the option to do a 'nearest neighbors' average for y.
     #filename - the file you want to open
@@ -180,6 +194,7 @@ def fitabs(run,ax, name, runname):
     ax.set_ylabel('Abs')
     ax.legend()
     # print(runname, ' & ', r6(Ainf), ' & ', r6(dA), ' & ', r6(k), ' & ', r6(sAinf), ' & ', r6(sdA), ' & ', r6(sk), '\\\\')
+    return Ainf, k, sAinf, sk
 
 def fit322(run,ax, name, runname):
     run[:, 0] = run[:, 0] - np.min(run[:, 0])
@@ -213,7 +228,9 @@ def fit322(run,ax, name, runname):
     ax.set_xlabel('Time')
     ax.set_ylabel('Abs')
     ax.legend()
-    print(runname, ' & ', r6(B), ' & ', r6(D), ' & ', r6(k3), ' & ', r6(kT), ' & ', r6(sB), ' & ', r6(sD), ' & ', r6(sk3), ' & ', r6(skT), '\\\\')
+    # print(runname, ' & ', r6(B), ' & ', r6(D), ' & ', r6(k3), ' & ', r6(kT), ' & ', r6(sB), ' & ', r6(sD),
+    #       ' & ', r6(sk3), ' & ', r6(skT), '\\\\')
+    return k3, sk3
 
 def r6(arr):
     def round_single_value(val):
@@ -221,6 +238,16 @@ def r6(arr):
             return 0
         else:
             return np.round(val, decimals=5 - int(np.floor(np.log10(np.abs(val)))))
+
+    vectorized_round = np.vectorize(round_single_value)
+    return vectorized_round(arr)
+
+def r4(arr):
+    def round_single_value(val):
+        if val == 0:
+            return 0
+        else:
+            return np.round(val, decimals=3 - int(np.floor(np.log10(np.abs(val)))))
 
     vectorized_round = np.vectorize(round_single_value)
     return vectorized_round(arr)
@@ -245,3 +272,4 @@ data = [r18_6_r1,r23_0_r1, r28_1_1, r28_1_2,r28_1_3, r33_4_r1]
 for r in data:
     r.plotData()
     r.fitdata()
+    r.getrates()
