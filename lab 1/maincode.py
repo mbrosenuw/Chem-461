@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from os.path import join as j
+from scipy.constants import physical_constants as pc
+from matplotlib.ticker import ScalarFormatter
 
 class Run():
     def __init__(self, path, n240, n290, n322, start,stop, temp,cut = False,c322 = 0, r322 = 10):
@@ -83,6 +85,7 @@ class Run():
         sk1, sk2, sk4 = np.sqrt(np.diag(Sk))
         print(self.temp, ' & ', r4(sk1), ' & ', r4(sk2), ' & ', r4(self.sk3), ' & ', r4(sk4), ' & ', r4(self.skTot240),
               '\\\\')
+        return np.array([float(self.temp), k1,k2,self.k3,k4])
 def openspec(filename, ravg=False, w = 5):
     #open a file and return the contents of x-y data, with the option to do a 'nearest neighbors' average for y.
     #filename - the file you want to open
@@ -269,7 +272,95 @@ r33_4_r1 = Run('lab1 data/timeresolved/33_4', '33_4_r1_240nm.txt', '33_4_r1_290n
 
 data = [r18_6_r1,r23_0_r1, r28_1_1, r28_1_2,r28_1_3, r33_4_r1]
 
-for r in data:
-    r.plotData()
-    r.fitdata()
-    r.getrates()
+# runrates = []
+# for r in data:
+#     r.plotData()
+#     r.fitdata()
+#
+#     runrates.append(r.getrates())
+#
+# runrates = np.array(runrates)
+# np.save('runrates.npy', runrates)
+
+runrates = np.load('runrates.npy')
+def arrhenius(rates):
+    tvec = rates[:,0]
+    N = pc['Avogadro constant'][0]
+    k = pc['Boltzmann constant'][0]
+    xvec = 1/(N*k*(tvec+273.15))
+    k1 = rates[:, 1]
+    k2 = rates[:, 2]
+    k3 = rates[:, 3]
+    k4 = rates[:, 4]
+
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12, 9))
+
+    # Subplot 1
+    axs[0, 0].scatter(xvec, np.log(k1), c='k')
+    axs[0, 0].set_title('$\\ln{k_1}$ vs $\\frac{1}{N_Ak_BT}$')
+    axs[0, 0].set_ylabel('$\\ln{k_1}$')
+    axs[0, 0].set_xlabel('$\\frac{1}{N_Ak_BT}$')
+    coeffs, cov1 = np.polyfit(xvec, np.log(k1), 1, cov=True)
+    slope, intercept = coeffs
+    axs[0, 0].plot(xvec, np.polyval([slope, intercept], xvec), 'r-', label='Fitted line')
+    equation_text = '$\\ln{k} = ' + str(np.round(intercept, 2)) + ' + ' + str(
+        np.round(slope, 2)) + '\\frac{1}{N_Ak_BT}$'
+    axs[0, 0].text(0.05, -0.25, equation_text, transform=axs[0, 0].transAxes, fontsize=9, verticalalignment='top')
+
+    # Subplot 2
+    axs[0, 1].scatter(xvec, np.log(k2), c='k')
+    axs[0, 1].set_title('$\\ln{k_2}$ vs $\\frac{1}{N_Ak_BT}$')
+    axs[0, 1].set_ylabel('$\\ln{k_2}$')
+    axs[0, 1].set_xlabel('$\\frac{1}{N_Ak_BT}$')
+    coeffs, cov2 = np.polyfit(xvec, np.log(k2), 1, cov=True)
+    slope2, intercept2 = coeffs
+    axs[0, 1].plot(xvec, np.polyval([slope2, intercept2], xvec), 'r-', label='Fitted line')
+    equation_text = '$\\ln{k} = ' + str(np.round(intercept2, 2)) + ' + ' + str(
+        np.round(slope2, 2)) + '\\frac{1}{N_Ak_BT}$'
+    axs[0, 1].text(0.05, -0.25, equation_text, transform=axs[0, 1].transAxes, fontsize=9, verticalalignment='top')
+
+    # Subplot 3
+    axs[1, 0].scatter(xvec, np.log(k3), c='k')
+    axs[1, 0].set_title('$\\ln{k_3}$ vs $\\frac{1}{N_Ak_BT}$')
+    axs[1, 0].set_ylabel('$\\ln{k_3}$')
+    axs[1, 0].set_xlabel('$\\frac{1}{N_Ak_BT}$')
+    coeffs, cov3 = np.polyfit(xvec, np.log(k3), 1, cov=True)
+    slope3, intercept3 = coeffs
+    axs[1, 0].plot(xvec, np.polyval([slope3, intercept3], xvec), 'r-', label='Fitted line')
+    equation_text = '$\\ln{k} = ' + str(np.round(intercept3, 2)) + ' + ' + str(
+        np.round(slope3, 2)) + '\\frac{1}{N_Ak_BT}$'
+    axs[1, 0].text(0.05, -0.25, equation_text, transform=axs[1, 0].transAxes, fontsize=9, verticalalignment='top')
+
+    # Subplot 4
+    axs[1, 1].scatter(xvec, np.log(k4), c='k')
+    axs[1, 1].set_title('$\\ln{k_4}$ vs $\\frac{1}{N_Ak_BT}$')
+    axs[1, 1].set_ylabel('$\\ln{k_4}$')
+    axs[1, 1].set_xlabel('$\\frac{1}{N_Ak_BT}$')
+    coeffs, cov4 = np.polyfit(xvec, np.log(k4), 1, cov=True)
+    slope4, intercept4 = coeffs
+    axs[1, 1].plot(xvec, np.polyval([slope4, intercept4], xvec), 'r-', label='Fitted line')
+    equation_text = '$\\ln{k} = ' + str(np.round(intercept4, 2)) + ' + ' + str(
+        np.round(slope4, 2)) + '\\frac{1}{N_Ak_BT}$'
+    axs[1, 1].text(0.05, -0.25, equation_text, transform=axs[1, 1].transAxes, fontsize=9, verticalalignment='top')
+
+    # Apply scientific notation to all axes
+    for ax in axs.flat:
+        ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+        ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+        ax.ticklabel_format(style='sci', scilimits=(0, 0), axis='both')
+
+    fig.suptitle('k vs $\\frac{1}{N_Ak_BT}$', fontsize=18)
+    plt.subplots_adjust(top=0.88, hspace=0.45, wspace=0.4)
+    plt.show()
+    print('k_1' , ' & ' , r4(np.exp(intercept)) , ' & ' , r4(-1 * slope) , '\\\\')
+    print('k_2' , ' & ' , r4(np.exp(intercept2)) , ' & ' , r4(-1 * slope2) , '\\\\')
+    print('k_3' , ' & ' , r4(np.exp(intercept3)) , ' & ' , r4(-1 * slope3) , '\\\\')
+
+    covs = [cov1, cov2, cov3, cov4]
+    ic = [intercept, intercept2, intercept3]
+
+    for i, cov in enumerate(covs):
+        berr, merr = np.sqrt((np.diag(cov)).flatten())
+        Aerr = np.exp(ic[i])*berr
+        print('k_',i+1, ' & ', r4(Aerr), ' & ', r4(merr), '\\\\')
+arrhenius(runrates)
