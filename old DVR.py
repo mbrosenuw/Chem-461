@@ -17,7 +17,7 @@ args = {
     "mass1": m1 * mtrans,  # mass electron
     "mass2": m2 * mtrans,  # Hartree
     "re": 1.279 * rtrans,  # bohr
-    "alpha": np.sqrt(8 * np.pi * 2 * c * amkg * (m1 * m2) / (m1 + m2) * 52.5 / h) * br,  # 1/bohr
+    "alpha": np.sqrt(8 * np.pi ** 2 * c * amkg * (m1 * m2) / (m1 + m2) * 52.5 / h) * br,  # 1/bohr
     "De": 2992.0 / (4 * 0.01755) * h * c / He,  # Hartree
     'EStrength': 0.05,
 }
@@ -28,7 +28,7 @@ args2 = {
     "mass1": m1 * mtrans,  # mass electron
     "mass2": m2 * mtrans,  # Hartree
     "re": 1.279 * rtrans,  # bohr
-    "alpha": np.sqrt(8 * np.pi * 2 * c * amkg * (m1 * m2) / (m1 + m2) * 26.5 / h) * br,  # 1/bohr
+    "alpha": np.sqrt(8 * np.pi ** 2 * c * amkg * (m1 * m2) / (m1 + m2) * 26.5 / h) * br,  # 1/bohr
     "De": 2144.0 / (4 * 0.01236) * h * c / He,  # Hartree
     'EStrength': 0.05,
 }
@@ -72,12 +72,6 @@ def runDVR(domain, N, args):
     T = CM_kinE(grid, mu)
     V = MO_potE(grid, args['re'], args['De'], args['alpha'])
     energies, wfns = H(T, V)
-    # print(energies[0:20])
-    # idx = 0
-    # plt.plot(grid, wfns.T[idx] + energies[idx])
-    # plt.plot(grid, np.diag(V))
-    # plt.ylim((0, max(wfns.T[idx]) + 0.5))
-    # plt.show()
     return energies, wfns, grid, V
 
 
