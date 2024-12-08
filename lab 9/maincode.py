@@ -4,6 +4,8 @@ import os
 import csv
 import scipy as sc
 from scipy.stats import linregress
+from scipy.constants import physical_constants as pc
+from scipy.optimize import fsolve
 
 p = 747  # torr
 T = 23.0
@@ -67,6 +69,7 @@ vfs, vfi = fitandplot(vfAlc, ri, 'Volume Fraction of Alcohol [unitless]', 'Refra
 mfs, mfi = fitandplot(mfAlc, ri, 'Mole Fraction of Alcohol [unitless]', 'Refractive index [unitless]',
                       'Refractive index vs Mole Fraction')
 
+Pd1 = 0.986847
 vTol = 30
 vAlc = np.array([0, 1, 2, 3, 5, 8, 13])
 mTol1 = mdtol * vTol
@@ -77,6 +80,7 @@ T1 = np.array([109, 107.5, 106.5, 103.2, 100.0, 97.8, 93.6]) + 273.15
 rif1 = np.array([1.496, 1.4938, 1.4908, 1.4820, 1.4804, 1.4680, 1.4595])
 rig1 = np.array([1.496, 1.4776, 1.4555, 1.4465, 1.4433, 1.4380, 1.4280])
 
+Pd2 = 1.00132
 vAlc = 30
 vTol = np.array([0, 1, 3, 6, 9, 14, 19])
 mTol2 = mdtol * vTol
@@ -110,3 +114,86 @@ plt.title('Temperature vs Mole Fraction', fontsize=14)
 plt.xlabel('Mole Fraction [unitless]', fontsize=12)
 plt.ylabel('Temperature [K]', fontsize=12)
 plt.show()
+
+def tpred(Tr, H, P,Pr) :
+    N = pc['Avogadro constant'][0]
+    k = pc['Boltzmann constant'][0]
+    return Tr/(1-(N*k*Tr)/(H)*np.log(P/Pr))
+
+Tbalc = 370.2
+Tralc = 370.2
+Halc = 47*10**3
+
+Tbtol = 382.2
+Trtol = 382.2
+Htol = 37*10**3
+
+print('alc: ' , tpred(Tbalc, Halc, Pd1, 1))
+print('tol: ' , tpred(Tbtol, Htol, Pd2, 1))
+
+def cceqn(H, T,Tr,Pr):
+    N = pc['Avogadro constant'][0]
+    k = pc['Boltzmann constant'][0]
+    return Pr*np.exp(-(H/(N*k*Tr))*(Tr/T-1))
+
+trange = np.linspace(300,400, 1000)
+plt.figure()
+plt.plot(trange, cceqn(Halc, trange, Tralc, 1), color='blue', label='1-Propanol')
+plt.plot(trange, cceqn(Htol, trange, Trtol, 1), color='red', label='Toluene')
+plt.hlines(y=1, xmin = np.min(trange), xmax= np.max(trange),label = '1 atm', color = 'k', linestyle = '--')
+plt.legend(loc='best')
+plt.title('Vapor pressure vs Temperature', fontsize=14)
+plt.xlabel('Temperature [K]', fontsize=12)
+plt.ylabel('Partial Pressure[atm]', fontsize=12)
+plt.show()
+
+def P1(T,x):
+    t1 = x * cceqn(Halc, T, Tralc, 1)
+    t2 = (1 - x) * cceqn(Htol, T, Trtol, 1)
+    return t1 + t2
+def getTx(xf, Tralc, Halc, Trtol, Htol):
+    def x(T):
+        num = 1-cceqn(Htol, T, Trtol, 1)
+        denom = cceqn(Halc, T, Tralc, 1) - cceqn(Htol, T, Trtol, 1)
+        return num/denom
+
+    def equation(T):
+        return x(T)-xf
+
+
+    ig = np.mean(Ttot)
+
+    T_solution = fsolve(equation, ig)
+    return T_solution
+
+def getTy(yf, Tralc, Halc, Trtol, Htol):
+    def y(T):
+        num = 1 - cceqn(Htol, T, Trtol, 1)
+        denom = cceqn(Halc, T, Tralc, 1) - cceqn(Htol, T, Trtol, 1)
+        return num / denom * cceqn(Halc, T, Tralc, 1)
+
+    def equation(T):
+        return y(T) - yf
+
+    ig = np.mean(Ttot)
+
+    T_solution = fsolve(equation, ig)
+    return T_solution
+
+mff = lookup_x(rif, mfs, mfi)
+mfg = lookup_x(rig, mfs, mfi)
+plt.figure()
+plt.scatter(mff, Ttot, color='blue', label='Liquid Phase')
+plt.scatter(mfg, Ttot, color='red', label='Gas Phase')
+mflalc = np.linspace(0,1,50)
+predltemps = np.array([getTx(x, Tralc, Halc, Trtol,Htol) for x in mflalc])
+plt.plot(mflalc, predltemps, color = 'blue', label='predicted liquid phase')
+mfgalc = np.linspace(0,1,50)
+predgtemps = np.array([getTy(x, Tralc, Halc, Trtol,Htol) for x in mfgalc])
+plt.plot(mfgalc, predgtemps, color = 'red', label='predicted gas phase')
+plt.legend(loc='best')
+plt.title('Temperature vs Mole Fraction', fontsize=14)
+plt.xlabel('Mole Fraction [unitless]', fontsize=12)
+plt.ylabel('Temperature [K]', fontsize=12)
+plt.show()
+
